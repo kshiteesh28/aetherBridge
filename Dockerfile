@@ -1,43 +1,47 @@
-# AetherBridge Unified Deployment
-# Google Cloud Run Optimized
+# AetherBridge — Google Cloud Run Optimized
+# Multi-stage build: React frontend + Express/Prisma backend
 
-# Stage 1: Build the React Frontend
+# ─── Stage 1: Build React Frontend ───────────────────────────────────────────
 FROM node:20-alpine AS frontend-builder
 WORKDIR /app/frontend
 COPY frontend/package*.json ./
-RUN npm ci
+RUN npm ci --legacy-peer-deps
 COPY frontend ./
 RUN npm run build
 
-# Stage 2: Build the Express/Prisma Backend
+# ─── Stage 2: Build Express/TypeScript Backend ────────────────────────────────
 FROM node:20-alpine AS backend-builder
 WORKDIR /app
 COPY package*.json ./
+RUN npm ci --legacy-peer-deps
 COPY prisma ./prisma/
-# Install dependencies and generate prisma client
-RUN npm ci
-RUN npx prisma generate
 COPY tsconfig.json ./
 COPY src ./src/
-RUN npx tsc
+# Generate prisma client then compile TypeScript
+RUN npx prisma generate
+RUN npx tsc --skipLibCheck
 
-# Stage 3: Production Image
+# ─── Stage 3: Lean Production Image ──────────────────────────────────────────
 FROM node:20-alpine
 WORKDIR /app
+
 COPY package*.json ./
-# Install only production dependencies
-RUN npm ci --omit=dev
+RUN npm ci --omit=dev --legacy-peer-deps
 COPY prisma ./prisma/
 RUN npx prisma generate
 
-# Copy built backend
+# Compiled backend from Stage 2
 COPY --from=backend-builder /app/dist ./dist
 
-# Copy built frontend into the backend's static delivery folder
+# Built React frontend from Stage 1 — placed at /app/frontend-dist
 COPY --from=frontend-builder /app/frontend/dist ./frontend-dist
 
-# Expose the port Google Cloud Run passes
+# Cloud Run injects PORT env var — default to 8080
+ENV PORT=8080
+ENV NODE_ENV=production
+# SQLite in-memory for Cloud Run (no cloud DB needed for hackathon demo)
+ENV DATABASE_URL="file:/tmp/dev.db"
+
 EXPOSE 8080
 
-# Run the unified stack
 CMD ["node", "dist/server.js"]

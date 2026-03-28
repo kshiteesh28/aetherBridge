@@ -42,13 +42,14 @@ app.post('/api/v1/live-evaluate', async (req, res) => {
 });
 
 // SERVE FRONTEND (Cloud Run Deployment)
-app.use(express.static(path.join(__dirname, '../../frontend-dist')));
+const frontendPath = path.join(__dirname, '../frontend-dist');
+app.use(express.static(frontendPath));
 
 app.get('*', (req, res, next) => {
   if (req.path.startsWith('/api')) {
     return next();
   }
-  res.sendFile(path.join(__dirname, '../../frontend-dist/index.html'));
+  res.sendFile(path.join(frontendPath, 'index.html'));
 });
 
 // Global Error Handler
