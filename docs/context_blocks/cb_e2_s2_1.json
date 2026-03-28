@@ -1,0 +1,294 @@
+{
+  "$schema": "context-block-v1",
+  "blockId": "CB-E2-S2.1",
+  "title": "Vertex AI Gemini Adapter",
+  "description": "Infrastructure adapter wrapping the @google-cloud/vertexai SDK. Sends multi-modal prompts (GCS URI + system instructions) to Gemini 1.5 Pro and parses the structured JSON response. Handles hallucination/timeout errors.",
+  "version": "1.0.0",
+  "generatedAt": "2026-03-28T11:54:54+05:30",
+  "status": "ready",
+  "traceability": {
+    "srdRequirements": [
+      {
+        "id": "FR-RE-001",
+        "title": "Intent Extraction",
+        "section": "§4.2",
+        "description": "Identify the Main Action requested"
+      },
+      {
+        "id": "FR-RE-002",
+        "title": "Entity Recognition",
+        "section": "§4.2",
+        "description": "Label GPS, names, medications, hazard types"
+      },
+      {
+        "id": "FR-RE-003",
+        "title": "Multi-Modal Fusion",
+        "section": "§4.2",
+        "description": "Correlate audio and visual signals"
+      }
+    ],
+    "epic": {
+      "id": "E2",
+      "title": "Gemini Reasoning + Action Pack"
+    },
+    "story": {
+      "id": "S2.1",
+      "title": "Vertex AI (Gemini) Adapter",
+      "size": "M",
+      "points": 5,
+      "userStory": "As the reasoning engine, I want to send a multi-modal prompt to Gemini 1.5 Pro, so that I receive a structured JSON extraction of intent and entities."
+    },
+    "designReferences": {
+      "hld": [
+        "§2.2 — System Context Diagram"
+      ],
+      "lld": [
+        "§5 — Ingestion Pipeline Sequence"
+      ]
+    }
+  },
+  "techStack": {
+    "runtime": {
+      "language": "TypeScript",
+      "version": "5.x"
+    },
+    "additionalLibraries": [
+      {
+        "name": "@google-cloud/vertexai",
+        "version": "1.x",
+        "purpose": "Vertex AI SDK for Gemini 1.5 Pro multi-modal reasoning"
+      }
+    ]
+  },
+  "fileManifest": {
+    "create": [
+      {
+        "path": "src/infrastructure/gemini.adapter.ts",
+        "type": "source",
+        "layer": "infrastructure",
+        "description": "GeminiAdapter class wrapping Vertex AI SDK"
+      },
+      {
+        "path": "src/infrastructure/__tests__/gemini.adapter.test.ts",
+        "type": "test",
+        "layer": "infrastructure",
+        "description": "Gemini adapter tests with mocked SDK"
+      }
+    ],
+    "modify": [],
+    "dependencies": [
+      {
+        "path": "src/shared/errors.ts",
+        "mustExist": true,
+        "provides": "AIProcessingError class"
+      }
+    ]
+  },
+  "typeDefinitions": {
+    "interfaces": [
+      {
+        "name": "GeminiExtractionResult",
+        "description": "Structured output from Gemini reasoning",
+        "properties": [
+          {
+            "name": "intent",
+            "type": "string",
+            "description": "Primary intent: MEDICAL_TRIAGE, SOS, UTILITY_ISSUE"
+          },
+          {
+            "name": "entities",
+            "type": "Record<string, any>",
+            "description": "Extracted entities: names, locations, medications, etc."
+          },
+          {
+            "name": "confidence",
+            "type": "number",
+            "description": "0-1 confidence score"
+          }
+        ]
+      },
+      {
+        "name": "IGeminiAdapter",
+        "description": "Interface for Gemini adapter",
+        "methods": [
+          {
+            "name": "extractIntent",
+            "params": "gcsUri: string, mimeType: string",
+            "returns": "Promise<GeminiExtractionResult>"
+          }
+        ]
+      }
+    ]
+  },
+  "businessRules": [
+    {
+      "id": "BR-GEMINI-001",
+      "rule": "Gemini response must be valid JSON. If not, throw AIProcessingError.",
+      "enforcement": "try/catch around JSON.parse()",
+      "errorOnViolation": {
+        "code": "AI_PROCESSING_ERROR",
+        "status": 502
+      }
+    },
+    {
+      "id": "BR-GEMINI-002",
+      "rule": "Gemini SDK timeouts must be caught and wrapped in AIProcessingError.",
+      "enforcement": "try/catch on generateContent() call",
+      "errorOnViolation": {
+        "code": "AI_PROCESSING_ERROR",
+        "status": 502
+      }
+    },
+    {
+      "id": "BR-GEMINI-003",
+      "rule": "System prompt must instruct Gemini to ONLY return JSON, no preamble.",
+      "enforcement": "Hardcoded system instruction in adapter",
+      "errorOnViolation": null
+    }
+  ],
+  "testSpecifications": {
+    "unitTests": [
+      {
+        "suite": "GeminiAdapter",
+        "file": "src/infrastructure/__tests__/gemini.adapter.test.ts",
+        "cases": [
+          {
+            "name": "should return structured JSON from Gemini response",
+            "type": "happy-path",
+            "arrange": "Mock generateContent to return valid JSON string",
+            "act": "adapter.extractIntent(uri, mime)",
+            "assert": [
+              "result.intent is 'MEDICAL_TRIAGE'",
+              "result.entities.patient_name is 'John'",
+              "result.confidence > 0.9"
+            ]
+          },
+          {
+            "name": "should throw AIProcessingError if Gemini returns malformed JSON",
+            "type": "error",
+            "arrange": "Mock generateContent to return 'This is not JSON'",
+            "act": "adapter.extractIntent(uri, mime)",
+            "assert": [
+              "Throws AIProcessingError"
+            ]
+          },
+          {
+            "name": "should throw AIProcessingError on Gemini SDK timeout",
+            "type": "error",
+            "arrange": "Mock generateContent to reject with DEADLINE_EXCEEDED",
+            "act": "adapter.extractIntent(uri, mime)",
+            "assert": [
+              "Throws AIProcessingError"
+            ]
+          }
+        ]
+      }
+    ],
+    "testData": {
+      "fixtures": [
+        {
+          "name": "validGeminiResponse",
+          "data": {
+            "intent": "MEDICAL_TRIAGE",
+            "entities": {
+              "patient_name": "John",
+              "allergies": [
+                "Sulfites"
+              ]
+            },
+            "confidence": 0.97
+          }
+        },
+        {
+          "name": "malformedResponse",
+          "data": "This is not JSON at all"
+        }
+      ]
+    }
+  },
+  "configuration": {
+    "environmentVariables": [
+      {
+        "name": "GOOGLE_CLOUD_PROJECT",
+        "description": "GCP project ID"
+      },
+      {
+        "name": "VERTEX_AI_LOCATION",
+        "default": "us-central1",
+        "description": "Vertex AI region"
+      },
+      {
+        "name": "GEMINI_MODEL_ID",
+        "default": "gemini-1.5-pro",
+        "description": "Gemini model version"
+      }
+    ]
+  },
+  "blockDependencies": {
+    "dependsOn": [
+      {
+        "blockId": "CB-E0-S0.1",
+        "title": "Project Scaffold",
+        "provides": [
+          "TypeScript config"
+        ]
+      }
+    ],
+    "requiredBy": [
+      {
+        "blockId": "CB-E2-S2.2",
+        "title": "Reasoning Service",
+        "consumes": [
+          "IGeminiAdapter",
+          "GeminiExtractionResult"
+        ]
+      }
+    ]
+  },
+  "qualityGates": {
+    "codeQuality": {
+      "noAnyTypes": true,
+      "checks": [
+        "npx tsc --noEmit",
+        "npx madge --circular .",
+        "npx eslint . --max-warnings 0"
+      ]
+    },
+    "security": {
+      "secretHandling": "GCP credentials via Application Default Credentials (ADC), never hardcoded",
+      "checks": [
+        "gitleaks detect",
+        "npx gitleaks detect --source . -v",
+        "npm audit --audit-level=high"
+      ]
+    },
+    "efficiency": {
+      "checks": [
+        "npx size-limit"
+      ]
+    },
+    "testing": {
+      "minLineCoverage": 90,
+      "checks": [
+        "npx vitest --coverage"
+      ],
+      "minBranchCoverage": 85
+    },
+    "accessibility": {
+      "applicable": false,
+      "checks": []
+    },
+    "googleServices": {
+      "applicable": true,
+      "services": [
+        "Vertex AI (Gemini 1.5 Pro)"
+      ],
+      "checks": [
+        "verify @google-cloud/vertexai SDK used",
+        "verify generateContent called with GCS fileUri",
+        "verify structured JSON prompt instruction"
+      ]
+    },
+    "evaluationThreshold": "98%"
+  }
+}

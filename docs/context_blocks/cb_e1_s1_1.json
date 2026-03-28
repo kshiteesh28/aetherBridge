@@ -1,0 +1,337 @@
+{
+  "$schema": "context-block-v1",
+  "blockId": "CB-E1-S1.1",
+  "title": "Intake Service (GCS Upload + Event Creation)",
+  "description": "Business logic for processing multi-modal uploads: validates input, uploads to Google Cloud Storage, creates Event record in PostgreSQL, and writes real-time status to Firebase Firestore.",
+  "version": "1.0.0",
+  "generatedAt": "2026-03-28T11:54:54+05:30",
+  "status": "ready",
+  "traceability": {
+    "srdRequirements": [
+      {
+        "id": "US-MMI-001",
+        "title": "Photo Intake Digitization",
+        "section": "§4.1",
+        "description": "Snap a photo of a messy medical chart and have it instantly digitized"
+      },
+      {
+        "id": "US-MMI-002",
+        "title": "Voice Memo Intake",
+        "section": "§4.1",
+        "description": "Record a voice memo of an emergency without typing"
+      }
+    ],
+    "epic": {
+      "id": "E1",
+      "title": "Multi-Modal Intake Pipeline"
+    },
+    "story": {
+      "id": "S1.1",
+      "title": "Intake Service (Business Logic)",
+      "size": "M",
+      "points": 5,
+      "userStory": "As a responder, I want to upload a voice recording or photo, so that it is safely stored and a trackable Event is created in the system."
+    },
+    "designReferences": {
+      "hld": [
+        "§3.1 — Ingestion Hub Component",
+        "§4.2 — Data Flow Architecture"
+      ],
+      "lld": [
+        "§5 — Sequence Diagram: Ingestion Pipeline"
+      ]
+    }
+  },
+  "techStack": {
+    "runtime": {
+      "language": "TypeScript",
+      "version": "5.x",
+      "runtime": "Node.js 20+"
+    },
+    "database": {
+      "orm": "Prisma 5.x"
+    },
+    "testing": {
+      "framework": "Vitest",
+      "version": "1.x"
+    },
+    "additionalLibraries": [
+      {
+        "name": "@google-cloud/storage",
+        "version": "7.x",
+        "purpose": "Google Cloud Storage for media blob uploads"
+      },
+      {
+        "name": "firebase-admin",
+        "version": "12.x",
+        "purpose": "Firebase Firestore real-time status sync"
+      }
+    ]
+  },
+  "fileManifest": {
+    "create": [
+      {
+        "path": "src/domains/intake/intake.service.ts",
+        "type": "source",
+        "layer": "service",
+        "description": "IntakeService class with processUpload() method"
+      },
+      {
+        "path": "src/infrastructure/storage.adapter.ts",
+        "type": "source",
+        "layer": "infrastructure",
+        "description": "Google Cloud Storage adapter (mockable)"
+      },
+      {
+        "path": "src/domains/intake/__tests__/intake.service.test.ts",
+        "type": "test",
+        "layer": "service",
+        "description": "Intake service unit tests with mocked GCS and Prisma"
+      }
+    ],
+    "modify": [],
+    "dependencies": [
+      {
+        "path": "prisma/schema.prisma",
+        "mustExist": true,
+        "provides": "Event and ActionPack models"
+      },
+      {
+        "path": "src/shared/errors.ts",
+        "mustExist": true,
+        "provides": "ValidationError class"
+      },
+      {
+        "path": "src/shared/schemas.ts",
+        "mustExist": true,
+        "provides": "IntakeMetadataSchema"
+      }
+    ]
+  },
+  "typeDefinitions": {
+    "interfaces": [
+      {
+        "name": "ProcessUploadInput",
+        "description": "Input for IntakeService.processUpload()",
+        "properties": [
+          {
+            "name": "file",
+            "type": "Buffer",
+            "description": "Raw file buffer"
+          },
+          {
+            "name": "mimeType",
+            "type": "string",
+            "description": "MIME type of uploaded file"
+          },
+          {
+            "name": "userId",
+            "type": "string",
+            "description": "Authenticated user ID"
+          },
+          {
+            "name": "context",
+            "type": "string",
+            "optional": true,
+            "description": "Optional user-provided context"
+          }
+        ]
+      },
+      {
+        "name": "ProcessUploadResult",
+        "description": "Result from IntakeService.processUpload()",
+        "properties": [
+          {
+            "name": "eventId",
+            "type": "string"
+          },
+          {
+            "name": "status",
+            "type": "EventStatus"
+          }
+        ]
+      },
+      {
+        "name": "IStorageAdapter",
+        "description": "Storage adapter interface for GCS",
+        "methods": [
+          {
+            "name": "uploadFile",
+            "params": "buffer: Buffer, fileName: string, mimeType: string",
+            "returns": "Promise<string>"
+          }
+        ]
+      }
+    ],
+    "enums": []
+  },
+  "businessRules": [
+    {
+      "id": "BR-INTAKE-001",
+      "rule": "File buffer must not be empty (0 bytes)",
+      "enforcement": "Service-level check before upload",
+      "errorOnViolation": {
+        "code": "VALIDATION_ERROR",
+        "status": 400
+      }
+    },
+    {
+      "id": "BR-INTAKE-002",
+      "rule": "Only supported MIME types are allowed: audio/*, image/*, video/*",
+      "enforcement": "Service-level regex check on mimeType",
+      "errorOnViolation": {
+        "code": "VALIDATION_ERROR",
+        "status": 400
+      }
+    },
+    {
+      "id": "BR-INTAKE-003",
+      "rule": "Event status must be set to PENDING on creation",
+      "enforcement": "Prisma default value in schema",
+      "errorOnViolation": null
+    },
+    {
+      "id": "BR-INTAKE-004",
+      "rule": "Firestore document must be created for real-time status tracking",
+      "enforcement": "Service writes to Firestore after Event creation",
+      "errorOnViolation": null
+    }
+  ],
+  "testSpecifications": {
+    "unitTests": [
+      {
+        "suite": "IntakeService",
+        "file": "src/domains/intake/__tests__/intake.service.test.ts",
+        "cases": [
+          {
+            "name": "should upload file to GCS and create a PENDING event",
+            "type": "happy-path",
+            "arrange": "Valid Buffer + audio/wav MIME + mocked GCS and Prisma",
+            "act": "service.processUpload(input)",
+            "assert": [
+              "GCS uploadFile called once",
+              "Prisma event.create called with status PENDING",
+              "Returns eventId and status"
+            ]
+          },
+          {
+            "name": "should throw ValidationError if file buffer is empty",
+            "type": "error",
+            "arrange": "Buffer.alloc(0) + audio/wav",
+            "act": "service.processUpload(input)",
+            "assert": [
+              "Throws ValidationError with message 'File cannot be empty'"
+            ]
+          },
+          {
+            "name": "should throw ValidationError for unsupported MIME types",
+            "type": "error",
+            "arrange": "Valid buffer + application/exe",
+            "act": "service.processUpload(input)",
+            "assert": [
+              "Throws ValidationError with message 'Unsupported media type'"
+            ]
+          }
+        ]
+      }
+    ],
+    "integrationTests": [],
+    "testData": {
+      "fixtures": [
+        {
+          "name": "validAudioUpload",
+          "data": {
+            "file": "Buffer.from('fake-audio-data')",
+            "mimeType": "audio/wav",
+            "userId": "user-123",
+            "context": "Patient intake recording"
+          }
+        },
+        {
+          "name": "emptyFile",
+          "data": {
+            "file": "Buffer.alloc(0)",
+            "mimeType": "audio/wav",
+            "userId": "user-123"
+          }
+        }
+      ]
+    }
+  },
+  "blockDependencies": {
+    "dependsOn": [
+      {
+        "blockId": "CB-E0-S0.2",
+        "title": "Prisma Schema",
+        "provides": [
+          "Prisma client",
+          "Event model"
+        ]
+      },
+      {
+        "blockId": "CB-E0-S0.3",
+        "title": "Shared Errors + Zod",
+        "provides": [
+          "ValidationError",
+          "IntakeMetadataSchema"
+        ]
+      }
+    ],
+    "requiredBy": [
+      {
+        "blockId": "CB-E1-S1.2",
+        "title": "POST /intake Endpoint",
+        "consumes": [
+          "IntakeService.processUpload()"
+        ]
+      }
+    ]
+  },
+  "qualityGates": {
+    "codeQuality": {
+      "maxCyclomaticComplexity": 10,
+      "noAnyTypes": true,
+      "checks": [
+        "npx tsc --noEmit",
+        "npx madge --circular .",
+        "npx eslint . --max-warnings 0"
+      ]
+    },
+    "security": {
+      "inputValidation": "MIME type whitelist + file buffer check",
+      "checks": [
+        "npm audit",
+        "npx gitleaks detect --source . -v"
+      ]
+    },
+    "efficiency": {
+      "noNPlusOne": true,
+      "checks": [
+        "npx size-limit"
+      ]
+    },
+    "testing": {
+      "minLineCoverage": 90,
+      "checks": [
+        "npx vitest --coverage"
+      ],
+      "minBranchCoverage": 85
+    },
+    "accessibility": {
+      "applicable": false,
+      "checks": []
+    },
+    "googleServices": {
+      "applicable": true,
+      "services": [
+        "Google Cloud Storage",
+        "Firebase Firestore"
+      ],
+      "checks": [
+        "verify @google-cloud/storage SDK used",
+        "verify firebase-admin Firestore write on event creation"
+      ]
+    },
+    "evaluationThreshold": "98%"
+  }
+}

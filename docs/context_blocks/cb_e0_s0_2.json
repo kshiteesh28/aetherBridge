@@ -1,0 +1,361 @@
+{
+  "$schema": "context-block-v1",
+  "blockId": "CB-E0-S0.2",
+  "title": "Prisma Schema + Database Migration",
+  "description": "Defines the Event and ActionPack Prisma schema with PostgreSQL, creates initial migration, and tests CRUD operations against a test database. Uses Google Cloud SQL as the target host.",
+  "version": "1.0.0",
+  "generatedAt": "2026-03-28T11:54:54+05:30",
+  "status": "ready",
+  "traceability": {
+    "srdRequirements": [
+      {
+        "id": "FR-RE-002",
+        "title": "Entity Recognition",
+        "section": "§4.2",
+        "description": "Persist recognised entities in Action Pack payloads"
+      }
+    ],
+    "epic": {
+      "id": "E0",
+      "title": "Project Foundation"
+    },
+    "story": {
+      "id": "S0.2",
+      "title": "Prisma Schema + Database Migration",
+      "size": "S",
+      "points": 3,
+      "userStory": "As a developer, I want to have the Event and ActionPack database tables ready, so that the intake pipeline can persist structured data."
+    },
+    "designReferences": {
+      "hld": [
+        "§4.1 — Data Store Decisions"
+      ],
+      "lld": [
+        "§3.1 — Prisma Schema"
+      ]
+    }
+  },
+  "techStack": {
+    "runtime": {
+      "language": "TypeScript",
+      "version": "5.x",
+      "runtime": "Node.js 20+"
+    },
+    "database": {
+      "type": "PostgreSQL",
+      "version": "15+",
+      "orm": "Prisma 5.x",
+      "host": "Google Cloud SQL"
+    },
+    "testing": {
+      "framework": "Vitest",
+      "version": "1.x",
+      "utilities": [
+        "@prisma/client"
+      ],
+      "coverage": "v8"
+    },
+    "additionalLibraries": []
+  },
+  "fileManifest": {
+    "create": [
+      {
+        "path": "prisma/schema.prisma",
+        "type": "schema",
+        "layer": "database",
+        "description": "Prisma schema with Event, ActionPack, RelayLog models"
+      },
+      {
+        "path": "src/domains/intake/__tests__/event.repository.test.ts",
+        "type": "test",
+        "layer": "repository",
+        "description": "Prisma CRUD tests for Event and ActionPack"
+      }
+    ],
+    "modify": [],
+    "dependencies": [
+      {
+        "path": "src/app.ts",
+        "mustExist": true,
+        "provides": "Express app context"
+      }
+    ]
+  },
+  "databaseSchema": {
+    "tables": [
+      {
+        "name": "Event",
+        "description": "Raw intake events from users",
+        "columns": [
+          {
+            "name": "id",
+            "type": "UUID",
+            "primaryKey": true,
+            "nullable": false,
+            "default": "uuid()"
+          },
+          {
+            "name": "rawInputUri",
+            "type": "TEXT",
+            "nullable": false,
+            "description": "GCS URI to uploaded media"
+          },
+          {
+            "name": "mediaType",
+            "type": "TEXT",
+            "nullable": false,
+            "description": "audio, video, photo"
+          },
+          {
+            "name": "status",
+            "type": "ENUM(EventStatus)",
+            "nullable": false,
+            "default": "PENDING"
+          },
+          {
+            "name": "userId",
+            "type": "TEXT",
+            "nullable": false
+          },
+          {
+            "name": "version",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": 1,
+            "description": "Optimistic locking"
+          },
+          {
+            "name": "createdAt",
+            "type": "TIMESTAMPTZ",
+            "nullable": false,
+            "default": "NOW()"
+          },
+          {
+            "name": "updatedAt",
+            "type": "TIMESTAMPTZ",
+            "nullable": false,
+            "default": "NOW()"
+          }
+        ],
+        "indexes": [
+          {
+            "name": "idx_event_user_id",
+            "columns": [
+              "userId"
+            ]
+          },
+          {
+            "name": "idx_event_status",
+            "columns": [
+              "status"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "ActionPack",
+        "description": "Structured intent extracted by Gemini",
+        "columns": [
+          {
+            "name": "id",
+            "type": "UUID",
+            "primaryKey": true,
+            "nullable": false,
+            "default": "uuid()"
+          },
+          {
+            "name": "eventId",
+            "type": "UUID",
+            "nullable": false,
+            "foreignKey": {
+              "table": "Event",
+              "column": "id"
+            }
+          },
+          {
+            "name": "intentType",
+            "type": "TEXT",
+            "nullable": false
+          },
+          {
+            "name": "payload",
+            "type": "JSONB",
+            "nullable": false
+          },
+          {
+            "name": "confidence",
+            "type": "FLOAT",
+            "nullable": false
+          },
+          {
+            "name": "isVerified",
+            "type": "BOOLEAN",
+            "nullable": false,
+            "default": false
+          },
+          {
+            "name": "verifiedById",
+            "type": "TEXT",
+            "nullable": true
+          }
+        ]
+      }
+    ],
+    "enums": [
+      {
+        "name": "EventStatus",
+        "values": [
+          "PENDING",
+          "PROCESSING",
+          "READY_FOR_REVIEW",
+          "RELAYED",
+          "FAILED"
+        ]
+      }
+    ]
+  },
+  "testSpecifications": {
+    "unitTests": [
+      {
+        "suite": "Event Repository (Prisma)",
+        "file": "src/domains/intake/__tests__/event.repository.test.ts",
+        "cases": [
+          {
+            "name": "should create an Event with status PENDING",
+            "type": "happy-path",
+            "arrange": "Valid GCS URI and mediaType",
+            "act": "prisma.event.create()",
+            "assert": [
+              "Event has id",
+              "Status is PENDING",
+              "Version is 1"
+            ]
+          },
+          {
+            "name": "should enforce non-null constraint on rawInputUri",
+            "type": "error",
+            "arrange": "rawInputUri set to null",
+            "act": "prisma.event.create()",
+            "assert": [
+              "Throws Prisma constraint error"
+            ]
+          },
+          {
+            "name": "should create an ActionPack linked to an Event",
+            "type": "happy-path",
+            "arrange": "Create parent Event first",
+            "act": "prisma.actionPack.create()",
+            "assert": [
+              "ActionPack.eventId matches Event.id",
+              "isVerified is false"
+            ]
+          }
+        ]
+      }
+    ],
+    "integrationTests": [],
+    "testData": {
+      "fixtures": [
+        {
+          "name": "validEvent",
+          "data": {
+            "rawInputUri": "gs://test-bucket/test-audio.wav",
+            "mediaType": "audio",
+            "userId": "user-123"
+          }
+        },
+        {
+          "name": "validActionPack",
+          "data": {
+            "intentType": "MEDICAL",
+            "payload": {
+              "patient": "Jane Doe",
+              "allergies": [
+                "Penicillin"
+              ]
+            },
+            "confidence": 0.95
+          }
+        }
+      ]
+    }
+  },
+  "blockDependencies": {
+    "dependsOn": [
+      {
+        "blockId": "CB-E0-S0.1",
+        "title": "Project Scaffold",
+        "provides": [
+          "TypeScript config",
+          "DDD folder structure"
+        ]
+      }
+    ],
+    "requiredBy": [
+      {
+        "blockId": "CB-E1-S1.1",
+        "title": "Intake Service",
+        "consumes": [
+          "Prisma client",
+          "Event model",
+          "ActionPack model"
+        ]
+      },
+      {
+        "blockId": "CB-E2-S2.2",
+        "title": "Reasoning Service",
+        "consumes": [
+          "Prisma client",
+          "Event model"
+        ]
+      }
+    ]
+  },
+  "qualityGates": {
+    "codeQuality": {
+      "maxCyclomaticComplexity": 5,
+      "noAnyTypes": true,
+      "checks": [
+        "npx prisma validate",
+        "npx tsc --noEmit",
+        "npx madge --circular .",
+        "npx eslint . --max-warnings 0"
+      ]
+    },
+    "security": {
+      "inputValidation": "Prisma enforces types at ORM level",
+      "checks": [
+        "npm audit",
+        "npx gitleaks detect --source . -v"
+      ]
+    },
+    "efficiency": {
+      "noNPlusOne": true,
+      "paginationRequired": [],
+      "checks": [
+        "npx size-limit"
+      ]
+    },
+    "testing": {
+      "minLineCoverage": 90,
+      "minBranchCoverage": 85,
+      "checks": [
+        "npx vitest --coverage"
+      ]
+    },
+    "accessibility": {
+      "applicable": false,
+      "checks": []
+    },
+    "googleServices": {
+      "applicable": true,
+      "services": [
+        "Google Cloud SQL (PostgreSQL)"
+      ],
+      "checks": [
+        "verify DATABASE_URL points to Cloud SQL in production"
+      ]
+    },
+    "evaluationThreshold": "98%"
+  }
+}

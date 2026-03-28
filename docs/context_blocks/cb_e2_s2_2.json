@@ -1,0 +1,282 @@
+{
+  "$schema": "context-block-v1",
+  "blockId": "CB-E2-S2.2",
+  "title": "Reasoning Service (Orchestrator)",
+  "description": "Orchestrates the full reasoning loop: fetches Event from DB, calls Gemini Adapter, runs Cloud DLP for PII stripping, saves ActionPack, updates Event status, and syncs to Firestore.",
+  "version": "1.0.0",
+  "generatedAt": "2026-03-28T11:54:54+05:30",
+  "status": "ready",
+  "traceability": {
+    "srdRequirements": [
+      {
+        "id": "FR-RE-001",
+        "title": "Intent Extraction",
+        "section": "§4.2"
+      },
+      {
+        "id": "FR-RE-002",
+        "title": "Entity Recognition",
+        "section": "§4.2"
+      }
+    ],
+    "epic": {
+      "id": "E2",
+      "title": "Gemini Reasoning + Action Pack"
+    },
+    "story": {
+      "id": "S2.2",
+      "title": "Reasoning Service (Orchestrator)",
+      "size": "M",
+      "points": 5,
+      "userStory": "As the system, I want to orchestrate the full loop (Event → Gemini → DLP → ActionPack → Status Update), so that messy input is converted into a reviewable Action Pack."
+    },
+    "designReferences": {
+      "hld": [
+        "§3.1 — Gemini Reasoner Module"
+      ],
+      "lld": [
+        "§5 — Ingestion Pipeline Sequence",
+        "§6 — Action Relay Sequence"
+      ]
+    }
+  },
+  "techStack": {
+    "additionalLibraries": [
+      {
+        "name": "@google-cloud/dlp",
+        "version": "5.x",
+        "purpose": "Google Cloud DLP API for automated PII detection and masking in extracted entities"
+      },
+      {
+        "name": "firebase-admin",
+        "version": "12.x",
+        "purpose": "Firestore status sync"
+      }
+    ]
+  },
+  "fileManifest": {
+    "create": [
+      {
+        "path": "src/domains/reasoning/reasoning.service.ts",
+        "type": "source",
+        "layer": "service",
+        "description": "ReasoningService orchestration class"
+      },
+      {
+        "path": "src/domains/reasoning/__tests__/reasoning.service.test.ts",
+        "type": "test",
+        "layer": "service",
+        "description": "Reasoning service tests with mocked adapter, Prisma, DLP, and Firestore"
+      }
+    ],
+    "modify": [],
+    "dependencies": [
+      {
+        "path": "src/infrastructure/gemini.adapter.ts",
+        "mustExist": true,
+        "provides": "IGeminiAdapter"
+      },
+      {
+        "path": "prisma/schema.prisma",
+        "mustExist": true,
+        "provides": "Event and ActionPack models"
+      }
+    ]
+  },
+  "typeDefinitions": {
+    "interfaces": [
+      {
+        "name": "IReasoningService",
+        "methods": [
+          {
+            "name": "processEvent",
+            "params": "eventId: string",
+            "returns": "Promise<{ actionPackId: string }>"
+          }
+        ]
+      },
+      {
+        "name": "IDlpAdapter",
+        "description": "Cloud DLP adapter for PII scrubbing",
+        "methods": [
+          {
+            "name": "deidentify",
+            "params": "text: string",
+            "returns": "Promise<string>"
+          }
+        ]
+      }
+    ]
+  },
+  "businessRules": [
+    {
+      "id": "BR-REASON-001",
+      "rule": "Event must exist and be in PENDING status to be processed",
+      "enforcement": "Service-level check before calling Gemini",
+      "errorOnViolation": {
+        "code": "NOT_FOUND",
+        "status": 404
+      }
+    },
+    {
+      "id": "BR-REASON-002",
+      "rule": "Event status transitions: PENDING → PROCESSING → READY_FOR_REVIEW (or FAILED)",
+      "enforcement": "Service updates status at each stage",
+      "errorOnViolation": null
+    },
+    {
+      "id": "BR-REASON-003",
+      "rule": "If Gemini fails, Event status must be set to FAILED",
+      "enforcement": "try/catch block in processEvent",
+      "errorOnViolation": null
+    },
+    {
+      "id": "BR-REASON-004",
+      "rule": "Extracted entity strings must be passed through Cloud DLP before persistence",
+      "enforcement": "DLP adapter called after Gemini, before ActionPack creation",
+      "errorOnViolation": null
+    }
+  ],
+  "testSpecifications": {
+    "unitTests": [
+      {
+        "suite": "ReasoningService",
+        "file": "src/domains/reasoning/__tests__/reasoning.service.test.ts",
+        "cases": [
+          {
+            "name": "should call Gemini, run DLP, create ActionPack, and update Event to READY_FOR_REVIEW",
+            "type": "happy-path",
+            "arrange": "Mock Gemini to return valid JSON, mock DLP to return cleaned text, mock Prisma",
+            "act": "service.processEvent('evt-001')",
+            "assert": [
+              "Gemini extractIntent called with correct URI",
+              "DLP deidentify called",
+              "ActionPack created with correct intent",
+              "Event updated to READY_FOR_REVIEW",
+              "Firestore status synced"
+            ]
+          },
+          {
+            "name": "should set Event status to FAILED if Gemini throws",
+            "type": "error",
+            "arrange": "Mock Gemini to reject with AIProcessingError",
+            "act": "service.processEvent('evt-001')",
+            "assert": [
+              "Event updated to FAILED",
+              "Throws error"
+            ]
+          },
+          {
+            "name": "should throw NotFoundError if event does not exist",
+            "type": "error",
+            "arrange": "Mock Prisma findUnique to return null",
+            "act": "service.processEvent('ghost-event')",
+            "assert": [
+              "Throws NotFoundError"
+            ]
+          }
+        ]
+      }
+    ],
+    "testData": {
+      "fixtures": [
+        {
+          "name": "mockEvent",
+          "data": {
+            "id": "evt-001",
+            "rawInputUri": "gs://bucket/sos.mp4",
+            "mediaType": "video",
+            "status": "PENDING"
+          }
+        },
+        {
+          "name": "mockGeminiResult",
+          "data": {
+            "intent": "SOS",
+            "entities": {
+              "location": "37.7749, -122.4194",
+              "severity": "HIGH"
+            },
+            "confidence": 0.99
+          }
+        }
+      ]
+    }
+  },
+  "blockDependencies": {
+    "dependsOn": [
+      {
+        "blockId": "CB-E2-S2.1",
+        "title": "Gemini Adapter",
+        "provides": [
+          "IGeminiAdapter"
+        ]
+      },
+      {
+        "blockId": "CB-E0-S0.2",
+        "title": "Prisma Schema",
+        "provides": [
+          "Event model",
+          "ActionPack model"
+        ]
+      }
+    ],
+    "requiredBy": [
+      {
+        "blockId": "CB-E2-S2.3",
+        "title": "Action Pack Builder",
+        "consumes": [
+          "GeminiExtractionResult"
+        ]
+      }
+    ]
+  },
+  "qualityGates": {
+    "codeQuality": {
+      "noAnyTypes": true,
+      "checks": [
+        "npx tsc --noEmit",
+        "npx madge --circular .",
+        "npx eslint . --max-warnings 0"
+      ]
+    },
+    "security": {
+      "inputValidation": "DLP scrubs PII before persistence",
+      "checks": [
+        "verify Cloud DLP integration",
+        "npx gitleaks detect --source . -v",
+        "npm audit --audit-level=high"
+      ]
+    },
+    "efficiency": {
+      "checks": [
+        "npx size-limit"
+      ]
+    },
+    "testing": {
+      "minLineCoverage": 90,
+      "checks": [
+        "npx vitest --coverage"
+      ],
+      "minBranchCoverage": 85
+    },
+    "accessibility": {
+      "applicable": false,
+      "checks": []
+    },
+    "googleServices": {
+      "applicable": true,
+      "services": [
+        "Vertex AI (Gemini 1.5 Pro)",
+        "Google Cloud DLP",
+        "Firebase Firestore"
+      ],
+      "checks": [
+        "verify @google-cloud/dlp deidentify call",
+        "verify Firestore status write",
+        "verify Vertex AI extractIntent call"
+      ]
+    },
+    "evaluationThreshold": "98%"
+  }
+}

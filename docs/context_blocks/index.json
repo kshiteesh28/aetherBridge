@@ -1,0 +1,82 @@
+{
+  "$schema": "context-block-index-v1",
+  "product": "AetherBridge",
+  "generatedAt": "2026-03-28T11:54:54+05:30",
+  "totalBlocks": 10,
+  "techStack": {
+    "summary": "TypeScript + Node.js + Next.js + Express + Prisma + PostgreSQL + Vitest + GCP (Vertex AI, Cloud Run, GCS, Firestore, Firebase Auth, Cloud DLP, Cloud Monitoring)",
+    "details": {
+      "frontend": { "framework": "Next.js 14+", "language": "TypeScript 5.x" },
+      "backend": { "runtime": "Node.js 20+", "framework": "Express 4.x", "language": "TypeScript 5.x" },
+      "database": { "primary": "PostgreSQL 15+", "orm": "Prisma 5.x", "realtime": "Firebase Firestore" },
+      "storage": { "media": "Google Cloud Storage (GCS)" },
+      "ai": { "engine": "Vertex AI — Gemini 1.5 Pro", "sdk": "@google-cloud/vertexai" },
+      "auth": { "provider": "Firebase Authentication", "sdk": "firebase-admin" },
+      "pii": { "service": "Google Cloud DLP API", "sdk": "@google-cloud/dlp" },
+      "monitoring": { "service": "Google Cloud Monitoring + Error Reporting" },
+      "testing": { "unit": "Vitest 1.x", "integration": "Supertest", "e2e": "Playwright", "validation": "Zod 3.x" },
+      "deployment": { "platform": "Google Cloud Run", "ci": "GitHub Actions + Cloud Build" }
+    }
+  },
+
+  "requirementMap": {
+    "FR-RE-001": { "title": "Intent Extraction", "srdSection": "§4.2", "blocks": ["CB-E2-S2.1", "CB-E2-S2.2"], "status": "ready" },
+    "FR-RE-002": { "title": "Entity Recognition", "srdSection": "§4.2", "blocks": ["CB-E2-S2.1", "CB-E2-S2.2"], "status": "ready" },
+    "FR-RE-003": { "title": "Multi-Modal Fusion", "srdSection": "§4.2", "blocks": ["CB-E2-S2.1"], "status": "ready" },
+    "FR-AR-001": { "title": "JSON Action Pack Generation", "srdSection": "§4.4", "blocks": ["CB-E2-S2.3"], "status": "ready" },
+    "FR-AR-002": { "title": "Human-in-the-Loop Gateway", "srdSection": "§4.4", "blocks": ["CB-E1-S1.3", "CB-E2-S2.3"], "status": "ready" },
+    "US-MMI-001": { "title": "Photo Intake", "srdSection": "§4.1", "blocks": ["CB-E1-S1.1", "CB-E1-S1.2"], "status": "ready" },
+    "US-MMI-002": { "title": "Voice Intake", "srdSection": "§4.1", "blocks": ["CB-E1-S1.1", "CB-E1-S1.2"], "status": "ready" }
+  },
+
+  "epicMap": {
+    "E0": { "title": "Project Foundation", "blocks": ["CB-E0-S0.1", "CB-E0-S0.2", "CB-E0-S0.3"], "status": "ready" },
+    "E1": { "title": "Multi-Modal Intake Pipeline", "blocks": ["CB-E1-S1.1", "CB-E1-S1.2", "CB-E1-S1.3"], "dependsOn": ["E0"], "status": "ready" },
+    "E2": { "title": "Gemini Reasoning + Action Pack", "blocks": ["CB-E2-S2.1", "CB-E2-S2.2", "CB-E2-S2.3", "CB-E2-S2.4"], "dependsOn": ["E0", "E1"], "status": "ready" }
+  },
+
+  "dependencyGraph": {
+    "CB-E0-S0.1": { "dependsOn": [], "requiredBy": ["CB-E0-S0.2", "CB-E0-S0.3", "CB-E1-S1.1", "CB-E2-S2.1"] },
+    "CB-E0-S0.2": { "dependsOn": ["CB-E0-S0.1"], "requiredBy": ["CB-E1-S1.1", "CB-E2-S2.2"] },
+    "CB-E0-S0.3": { "dependsOn": ["CB-E0-S0.1"], "requiredBy": ["CB-E1-S1.1", "CB-E1-S1.2"] },
+    "CB-E1-S1.1": { "dependsOn": ["CB-E0-S0.2", "CB-E0-S0.3"], "requiredBy": ["CB-E1-S1.2"] },
+    "CB-E1-S1.2": { "dependsOn": ["CB-E1-S1.1"], "requiredBy": ["CB-E1-S1.3", "CB-E2-S2.4"] },
+    "CB-E1-S1.3": { "dependsOn": ["CB-E1-S1.2"], "requiredBy": ["CB-E2-S2.4"] },
+    "CB-E2-S2.1": { "dependsOn": ["CB-E0-S0.1"], "requiredBy": ["CB-E2-S2.2"] },
+    "CB-E2-S2.2": { "dependsOn": ["CB-E2-S2.1", "CB-E0-S0.2"], "requiredBy": ["CB-E2-S2.3"] },
+    "CB-E2-S2.3": { "dependsOn": ["CB-E2-S2.2"], "requiredBy": ["CB-E2-S2.4"] },
+    "CB-E2-S2.4": { "dependsOn": ["CB-E1-S1.2", "CB-E2-S2.3"], "requiredBy": [] }
+  },
+
+  "executionOrder": [
+    { "phase": 1, "parallel": ["CB-E0-S0.1"] },
+    { "phase": 2, "parallel": ["CB-E0-S0.2", "CB-E0-S0.3"] },
+    { "phase": 3, "parallel": ["CB-E1-S1.1", "CB-E2-S2.1"] },
+    { "phase": 4, "parallel": ["CB-E1-S1.2", "CB-E2-S2.2"] },
+    { "phase": 5, "parallel": ["CB-E1-S1.3", "CB-E2-S2.3"] },
+    { "phase": 6, "parallel": ["CB-E2-S2.4"] }
+  ],
+
+  "blocks": [
+    { "id": "CB-E0-S0.1", "title": "Project Scaffold + Health Check", "file": "cb_e0_s0_1.json", "epic": "E0", "story": "S0.1", "size": "S", "layer": "infrastructure", "filesCreated": 5, "filesModified": 0 },
+    { "id": "CB-E0-S0.2", "title": "Prisma Schema + Migration", "file": "cb_e0_s0_2.json", "epic": "E0", "story": "S0.2", "size": "S", "layer": "database", "filesCreated": 2, "filesModified": 0 },
+    { "id": "CB-E0-S0.3", "title": "Shared Error Classes + Zod Schemas", "file": "cb_e0_s0_3.json", "epic": "E0", "story": "S0.3", "size": "S", "layer": "utility", "filesCreated": 4, "filesModified": 0 },
+    { "id": "CB-E1-S1.1", "title": "Intake Service (GCS Upload + Event Creation)", "file": "cb_e1_s1_1.json", "epic": "E1", "story": "S1.1", "size": "M", "layer": "service", "filesCreated": 3, "filesModified": 0 },
+    { "id": "CB-E1-S1.2", "title": "POST /api/v1/intake Endpoint", "file": "cb_e1_s1_2.json", "epic": "E1", "story": "S1.2", "size": "M", "layer": "controller", "filesCreated": 3, "filesModified": 1 },
+    { "id": "CB-E1-S1.3", "title": "GET /api/v1/event/:id Endpoint", "file": "cb_e1_s1_3.json", "epic": "E1", "story": "S1.3", "size": "S", "layer": "controller", "filesCreated": 2, "filesModified": 1 },
+    { "id": "CB-E2-S2.1", "title": "Vertex AI Gemini Adapter", "file": "cb_e2_s2_1.json", "epic": "E2", "story": "S2.1", "size": "M", "layer": "infrastructure", "filesCreated": 2, "filesModified": 0 },
+    { "id": "CB-E2-S2.2", "title": "Reasoning Service (Orchestrator)", "file": "cb_e2_s2_2.json", "epic": "E2", "story": "S2.2", "size": "M", "layer": "service", "filesCreated": 2, "filesModified": 0 },
+    { "id": "CB-E2-S2.3", "title": "Action Pack Builder", "file": "cb_e2_s2_3.json", "epic": "E2", "story": "S2.3", "size": "S", "layer": "utility", "filesCreated": 2, "filesModified": 0 },
+    { "id": "CB-E2-S2.4", "title": "Full Pipeline Integration Test", "file": "cb_e2_s2_4.json", "epic": "E2", "story": "S2.4", "size": "M", "layer": "integration", "filesCreated": 1, "filesModified": 1 }
+  ],
+
+  "googleServicesIntegration": {
+    "vertexAi": { "purpose": "Gemini 1.5 Pro multi-modal reasoning", "blocks": ["CB-E2-S2.1", "CB-E2-S2.2"] },
+    "cloudStorage": { "purpose": "Durable blob storage for messy inputs", "blocks": ["CB-E1-S1.1"] },
+    "firestore": { "purpose": "Real-time event status sync to frontend", "blocks": ["CB-E1-S1.1", "CB-E2-S2.2"] },
+    "firebaseAuth": { "purpose": "User authentication (MFA for professionals)", "blocks": ["CB-E1-S1.2", "CB-E1-S1.3"] },
+    "cloudDlp": { "purpose": "Automated PII stripping from extracted entities", "blocks": ["CB-E2-S2.2"] },
+    "cloudRun": { "purpose": "Serverless deployment with auto-scaling", "blocks": ["CB-E2-S2.4"] },
+    "cloudMonitoring": { "purpose": "Observability and alerting", "blocks": ["CB-E0-S0.1"] }
+  }
+}

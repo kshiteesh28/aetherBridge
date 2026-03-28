@@ -1,0 +1,219 @@
+{
+  "$schema": "context-block-v1",
+  "blockId": "CB-E2-S2.4",
+  "title": "Full Pipeline Integration Test",
+  "description": "End-to-end integration test covering the full AetherBridge pipeline: Upload media → Gemini extracts intent → Action Pack is created → Event status reflects READY_FOR_REVIEW. Validates all Google Services work together.",
+  "version": "1.0.0",
+  "generatedAt": "2026-03-28T11:54:54+05:30",
+  "status": "ready",
+  "traceability": {
+    "srdRequirements": [
+      {
+        "id": "US-MMI-001",
+        "title": "Photo Intake",
+        "section": "§4.1"
+      },
+      {
+        "id": "US-MMI-002",
+        "title": "Voice Intake",
+        "section": "§4.1"
+      },
+      {
+        "id": "FR-RE-001",
+        "title": "Intent Extraction",
+        "section": "§4.2"
+      },
+      {
+        "id": "FR-AR-001",
+        "title": "JSON Generation",
+        "section": "§4.4"
+      }
+    ],
+    "epic": {
+      "id": "E2",
+      "title": "Gemini Reasoning + Action Pack"
+    },
+    "story": {
+      "id": "S2.4",
+      "title": "Full Pipeline Integration Test",
+      "size": "M",
+      "points": 5,
+      "userStory": "As a QA engineer, I want to run a single E2E test from media upload to Action Pack output, so that I can verify the entire Chaos-to-Action pipeline works."
+    },
+    "designReferences": {
+      "hld": [
+        "§4.2 — Data Flow Architecture"
+      ],
+      "lld": [
+        "§5 — Ingestion Sequence",
+        "§6 — Relay Sequence"
+      ]
+    }
+  },
+  "fileManifest": {
+    "create": [
+      {
+        "path": "src/__tests__/pipeline.integration.test.ts",
+        "type": "test",
+        "layer": "integration",
+        "description": "Full pipeline integration test"
+      }
+    ],
+    "modify": [
+      {
+        "path": "src/app.ts",
+        "description": "Wire IntakeService to trigger ReasoningService after upload",
+        "changeType": "modify"
+      }
+    ],
+    "dependencies": [
+      {
+        "path": "src/api/routes/intake.ts",
+        "mustExist": true,
+        "provides": "POST /intake endpoint"
+      },
+      {
+        "path": "src/api/routes/event.ts",
+        "mustExist": true,
+        "provides": "GET /event/:id endpoint"
+      },
+      {
+        "path": "src/domains/reasoning/reasoning.service.ts",
+        "mustExist": true,
+        "provides": "ReasoningService.processEvent()"
+      },
+      {
+        "path": "src/domains/reasoning/action-pack.builder.ts",
+        "mustExist": true,
+        "provides": "ActionPackBuilder.build()"
+      }
+    ]
+  },
+  "testSpecifications": {
+    "unitTests": [],
+    "integrationTests": [
+      {
+        "suite": "Full Pipeline: Upload → Reason → Action Pack",
+        "file": "src/__tests__/pipeline.integration.test.ts",
+        "cases": [
+          {
+            "name": "should process an audio upload E2E and return an Action Pack",
+            "type": "happy-path",
+            "arrange": "Prepare fake audio buffer",
+            "act": "1. POST /api/v1/intake with audio file. 2. Trigger reasoning synchronously. 3. GET /api/v1/event/:id.",
+            "assert": [
+              "Upload returns 202 with event_id",
+              "Event status is READY_FOR_REVIEW",
+              "action_packs array has >= 1 item",
+              "First action_pack has a defined intent"
+            ]
+          }
+        ],
+        "setup": "Use mocked Gemini adapter and in-memory PostgesQL (or test DB). Firebase Firestore emulator.",
+        "teardown": "Clean up all test data from DB and Firestore."
+      }
+    ],
+    "testData": {
+      "fixtures": [
+        {
+          "name": "testAudioBuffer",
+          "data": "Buffer.from('fake-audio-sos-recording')"
+        }
+      ]
+    }
+  },
+  "configuration": {
+    "environmentVariables": [
+      {
+        "name": "FIRESTORE_EMULATOR_HOST",
+        "default": "localhost:8080",
+        "description": "Firebase Emulator for tests"
+      },
+      {
+        "name": "DATABASE_URL",
+        "default": "postgresql://test:test@localhost:5432/aether_test",
+        "description": "Test database"
+      }
+    ]
+  },
+  "blockDependencies": {
+    "dependsOn": [
+      {
+        "blockId": "CB-E1-S1.2",
+        "title": "POST /intake Endpoint",
+        "provides": [
+          "Upload route"
+        ]
+      },
+      {
+        "blockId": "CB-E1-S1.3",
+        "title": "GET /event/:id Endpoint",
+        "provides": [
+          "Status retrieval"
+        ]
+      },
+      {
+        "blockId": "CB-E2-S2.3",
+        "title": "Action Pack Builder",
+        "provides": [
+          "ActionPackBuilder.build()"
+        ]
+      }
+    ],
+    "requiredBy": []
+  },
+  "qualityGates": {
+    "codeQuality": {
+      "checks": [
+        "npx tsc --noEmit",
+        "npx madge --circular .",
+        "npx eslint . --max-warnings 0"
+      ]
+    },
+    "security": {
+      "checks": [
+        "npx gitleaks detect --source . -v",
+        "npm audit --audit-level=high"
+      ]
+    },
+    "efficiency": {
+      "checks": [
+        "Total pipeline execution < 10s in test environment",
+        "npx size-limit"
+      ]
+    },
+    "testing": {
+      "minLineCoverage": 90,
+      "errorPathsCovered": true,
+      "checks": [
+        "npx vitest --coverage"
+      ],
+      "minBranchCoverage": 85
+    },
+    "accessibility": {
+      "applicable": false,
+      "checks": []
+    },
+    "googleServices": {
+      "applicable": true,
+      "services": [
+        "Google Cloud Storage (mocked)",
+        "Vertex AI / Gemini (mocked)",
+        "Firebase Firestore (emulator)",
+        "Google Cloud DLP (mocked)",
+        "Firebase Authentication (emulator)"
+      ],
+      "checks": [
+        "verify all Google service adapters are mockable",
+        "verify Firebase Emulator Suite used for integration tests",
+        "verify Cloud Run deployment config includes all env vars"
+      ]
+    },
+    "evaluationThreshold": "98%"
+  },
+  "notes": [
+    "This is the capstone story — it validates that ALL previous stories integrate correctly.",
+    "Use Firebase Emulator Suite for Firestore and Auth in CI/CD.",
+    "Gemini adapter should be mocked in integration tests to avoid API costs and flakiness."
+  ]
+}

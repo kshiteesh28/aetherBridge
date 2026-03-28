@@ -1,0 +1,297 @@
+{
+  "$schema": "context-block-v1",
+  "blockId": "CB-E0-S0.1",
+  "title": "Project Scaffold + Health Check",
+  "description": "Scaffolds the Next.js + Express monolith with DDD folder structure, Vitest configuration, and a health check endpoint. Integrates Google Cloud Monitoring for observability.",
+  "version": "1.0.0",
+  "generatedAt": "2026-03-28T11:54:54+05:30",
+  "status": "ready",
+  "traceability": {
+    "srdRequirements": [
+      {
+        "id": "NFR-INFRA-001",
+        "title": "Project Infrastructure",
+        "section": "§2.3",
+        "description": "Node.js/Express backend with Next.js frontend on GCP Cloud Run"
+      }
+    ],
+    "epic": {
+      "id": "E0",
+      "title": "Project Foundation"
+    },
+    "story": {
+      "id": "S0.1",
+      "title": "Scaffold Next.js + Express Monolith",
+      "size": "S",
+      "points": 3,
+      "userStory": "As a developer, I want to have a scaffolded monorepo with Next.js frontend and Express backend, so that I can start building features immediately."
+    },
+    "designReferences": {
+      "hld": [
+        "§2.1 — Architecture Overview",
+        "§2.3 — Container Diagram"
+      ],
+      "lld": [
+        "§2.1 — DDD Layout"
+      ]
+    }
+  },
+  "techStack": {
+    "runtime": {
+      "language": "TypeScript",
+      "version": "5.x",
+      "runtime": "Node.js 20+"
+    },
+    "framework": {
+      "name": "Express",
+      "version": "4.x",
+      "relevantModules": [
+        "cors",
+        "helmet",
+        "express-async-errors"
+      ]
+    },
+    "frontend": {
+      "name": "Next.js",
+      "version": "14+",
+      "relevantModules": [
+        "next/font"
+      ]
+    },
+    "testing": {
+      "framework": "Vitest",
+      "version": "1.x",
+      "utilities": [
+        "supertest"
+      ],
+      "coverage": "v8"
+    },
+    "additionalLibraries": [
+      {
+        "name": "@google-cloud/monitoring",
+        "version": "4.x",
+        "purpose": "Google Cloud Monitoring for health metrics"
+      },
+      {
+        "name": "helmet",
+        "version": "7.x",
+        "purpose": "Security headers"
+      }
+    ]
+  },
+  "fileManifest": {
+    "create": [
+      {
+        "path": "src/app.ts",
+        "type": "source",
+        "layer": "infrastructure",
+        "description": "Express app entry point with middleware stack"
+      },
+      {
+        "path": "src/api/routes/health.ts",
+        "type": "source",
+        "layer": "controller",
+        "description": "Health check endpoint"
+      },
+      {
+        "path": "src/__tests__/health.test.ts",
+        "type": "test",
+        "layer": "controller",
+        "description": "Health check unit tests"
+      },
+      {
+        "path": "vitest.config.ts",
+        "type": "config",
+        "layer": "infrastructure",
+        "description": "Vitest configuration"
+      },
+      {
+        "path": "tsconfig.json",
+        "type": "config",
+        "layer": "infrastructure",
+        "description": "TypeScript configuration"
+      }
+    ],
+    "modify": [],
+    "dependencies": []
+  },
+  "typeDefinitions": {
+    "interfaces": [
+      {
+        "name": "HealthResponse",
+        "description": "Health check endpoint response",
+        "properties": [
+          {
+            "name": "status",
+            "type": "'healthy' | 'degraded'",
+            "description": "Service status"
+          },
+          {
+            "name": "timestamp",
+            "type": "string",
+            "description": "ISO 8601 timestamp"
+          },
+          {
+            "name": "version",
+            "type": "string",
+            "description": "App version from package.json"
+          }
+        ]
+      }
+    ],
+    "enums": []
+  },
+  "businessRules": [
+    {
+      "id": "BR-HEALTH-001",
+      "rule": "Health check must respond within 200ms",
+      "enforcement": "Express route with no external dependencies",
+      "errorOnViolation": null
+    }
+  ],
+  "errorHandling": {
+    "errorTypes": [
+      {
+        "class": "NotFoundError",
+        "httpStatus": 404,
+        "code": "NOT_FOUND",
+        "when": "Unknown route accessed"
+      }
+    ],
+    "retryPolicy": null,
+    "fallback": null
+  },
+  "testSpecifications": {
+    "unitTests": [
+      {
+        "suite": "Health Check",
+        "file": "src/__tests__/health.test.ts",
+        "cases": [
+          {
+            "name": "should return 200 OK with status healthy",
+            "type": "happy-path",
+            "arrange": "No setup needed",
+            "act": "GET /api/health",
+            "assert": [
+              "Status 200",
+              "Body contains status: healthy",
+              "Body contains timestamp as ISO string"
+            ]
+          },
+          {
+            "name": "should include correct Content-Type header",
+            "type": "happy-path",
+            "arrange": "No setup",
+            "act": "GET /api/health",
+            "assert": [
+              "Content-Type includes application/json"
+            ]
+          },
+          {
+            "name": "should return 404 for undefined routes",
+            "type": "error",
+            "arrange": "No setup",
+            "act": "GET /api/nonexistent",
+            "assert": [
+              "Status 404"
+            ]
+          }
+        ]
+      }
+    ],
+    "integrationTests": [],
+    "testData": {
+      "fixtures": []
+    }
+  },
+  "configuration": {
+    "environmentVariables": [
+      {
+        "name": "PORT",
+        "default": "3001",
+        "description": "Express server port"
+      },
+      {
+        "name": "NODE_ENV",
+        "default": "development",
+        "description": "Environment mode"
+      },
+      {
+        "name": "GOOGLE_CLOUD_PROJECT",
+        "default": null,
+        "description": "GCP Project ID for Cloud Monitoring"
+      }
+    ],
+    "constants": [],
+    "featureFlags": []
+  },
+  "blockDependencies": {
+    "dependsOn": [],
+    "requiredBy": [
+      {
+        "blockId": "CB-E0-S0.2",
+        "title": "Prisma Schema + Migration",
+        "consumes": [
+          "Express app",
+          "DDD folder structure"
+        ]
+      },
+      {
+        "blockId": "CB-E0-S0.3",
+        "title": "Shared Error Classes + Zod Schemas",
+        "consumes": [
+          "TypeScript config",
+          "Vitest config"
+        ]
+      }
+    ]
+  },
+  "qualityGates": {
+    "codeQuality": {
+      "maxCyclomaticComplexity": 10,
+      "maxFileLength": 300,
+      "noAnyTypes": true,
+      "checks": [
+        "npx tsc --noEmit",
+        "npx eslint . --max-warnings 0",
+        "npx madge --circular ."
+      ]
+    },
+    "security": {
+      "inputValidation": "None needed for health endpoint",
+      "checks": [
+        "npm audit --audit-level=moderate",
+        "npx gitleaks detect --source . -v"
+      ]
+    },
+    "efficiency": {
+      "noNPlusOne": true,
+      "checks": [
+        "npx size-limit"
+      ]
+    },
+    "testing": {
+      "minLineCoverage": 90,
+      "minBranchCoverage": 85,
+      "checks": [
+        "npx vitest --coverage --reporter=json"
+      ]
+    },
+    "accessibility": {
+      "applicable": false,
+      "notes": "Backend infrastructure — no UI",
+      "checks": []
+    },
+    "googleServices": {
+      "applicable": true,
+      "services": [
+        "Google Cloud Monitoring"
+      ],
+      "checks": [
+        "verify @google-cloud/monitoring SDK import",
+        "verify health metrics emission"
+      ]
+    },
+    "evaluationThreshold": "98%"
+  }
+}

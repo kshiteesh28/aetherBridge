@@ -1,0 +1,19 @@
+# Hackathon Challenge Rules
+
+As an AI assistant working on this repository, you must ALWAYS adhere to the following principles inspired by the hackathon evaluation focus areas and challenge expectations.
+
+## Core Evaluation Focus Areas
+1. **Code Quality**: Prioritize structure, readability, and maintainability. Write clean, self-documenting code with meaningful variable names and modular design.
+2. **Security**: Implement safe and responsible solutions. Always sanitize inputs, avoid hardcoding secrets, apply proper authentication/authorization, and follow security best practices.
+3. **Efficiency**: Ensure optimal use of computing resources. Write performant code, optimize algorithms, and limit unnecessary API calls or database queries.
+4. **Testing**: Validate all functionality thoroughly. Emphasize Test-Driven Development (TDD) where applicable, and write unit and integration tests for critical logic.
+5. **Accessibility**: Guarantee inclusive and usable design. Ensure any UI created strictly follows WCAG standards, includes proper semantic structure, ARIA roles, and is fully navigable via keyboard.
+6. **Google Services**: Focus on meaningful and deep integration of Google Services (e.g., Vertex AI, Cloud Run, Cloud Storage, Firestore). Leverage these services sensibly to show practical real-world usage.
+
+## Solution Expectations
+When ideating or implementing features, your solutions must actively demonstrate:
+- The ability to build a smart, dynamic assistant.
+- Logical decision-making deeply aware of the user context.
+- High practical and real-world usability.
+
+*Do not write code or provide architectural suggestions that violate these principles. Always prioritize these axes when reviewing and debugging.*

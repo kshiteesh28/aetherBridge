@@ -1,0 +1,184 @@
+{
+  "$schema": "context-block-v1",
+  "blockId": "CB-E1-S1.3",
+  "title": "GET /api/v1/event/:id Endpoint",
+  "description": "Express controller to retrieve event status and nested action packs. Includes Firebase Auth verification.",
+  "version": "1.0.0",
+  "generatedAt": "2026-03-28T11:54:54+05:30",
+  "status": "ready",
+  "traceability": {
+    "srdRequirements": [
+      {
+        "id": "FR-AR-002",
+        "title": "HITL Gateway",
+        "section": "§4.4",
+        "description": "Provide UI for supervisor to review Action Packs"
+      }
+    ],
+    "epic": {
+      "id": "E1",
+      "title": "Multi-Modal Intake Pipeline"
+    },
+    "story": {
+      "id": "S1.3",
+      "title": "GET /api/v1/event/:id Endpoint",
+      "size": "S",
+      "points": 3,
+      "userStory": "As a responder, I want to check the status of my submitted event and see extracted Action Packs."
+    },
+    "designReferences": {
+      "lld": [
+        "§4.2 — GET /event/:id"
+      ]
+    }
+  },
+  "fileManifest": {
+    "create": [
+      {
+        "path": "src/api/routes/event.ts",
+        "type": "source",
+        "layer": "controller"
+      },
+      {
+        "path": "src/api/__tests__/event.controller.test.ts",
+        "type": "test",
+        "layer": "controller"
+      }
+    ],
+    "modify": [
+      {
+        "path": "src/app.ts",
+        "description": "Register event routes",
+        "changeType": "append"
+      }
+    ]
+  },
+  "apiContracts": [
+    {
+      "method": "GET",
+      "path": "/api/v1/event/:id",
+      "description": "Get event status and nested action packs",
+      "auth": {
+        "required": true,
+        "provider": "Firebase Auth"
+      },
+      "responses": {
+        "200": {
+          "body": {
+            "id": "string",
+            "status": "EventStatus",
+            "action_packs": [
+              {
+                "id": "string",
+                "intent": "string",
+                "payload": "object",
+                "is_verified": "boolean"
+              }
+            ]
+          }
+        },
+        "404": {
+          "code": "NOT_FOUND",
+          "description": "Event does not exist"
+        }
+      }
+    }
+  ],
+  "testSpecifications": {
+    "unitTests": [
+      {
+        "suite": "GET /api/v1/event/:id",
+        "file": "src/api/__tests__/event.controller.test.ts",
+        "cases": [
+          {
+            "name": "should return 200 with event status and action packs",
+            "type": "happy-path",
+            "arrange": "Seed test event in DB",
+            "act": "GET /api/v1/event/:seededId",
+            "assert": [
+              "Status 200",
+              "Body has id",
+              "Body has action_packs array"
+            ]
+          },
+          {
+            "name": "should return 404 for non-existent event",
+            "type": "error",
+            "arrange": "No seeding",
+            "act": "GET /api/v1/event/non-existent",
+            "assert": [
+              "Status 404",
+              "Error code NOT_FOUND"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "blockDependencies": {
+    "dependsOn": [
+      {
+        "blockId": "CB-E1-S1.2",
+        "title": "POST /intake Endpoint",
+        "provides": [
+          "Registered route pattern",
+          "Error handler middleware"
+        ]
+      }
+    ],
+    "requiredBy": [
+      {
+        "blockId": "CB-E2-S2.4",
+        "title": "Integration Test",
+        "consumes": [
+          "GET /event/:id endpoint"
+        ]
+      }
+    ]
+  },
+  "qualityGates": {
+    "codeQuality": {
+      "noAnyTypes": true,
+      "checks": [
+        "npx tsc --noEmit",
+        "npx madge --circular .",
+        "npx eslint . --max-warnings 0"
+      ]
+    },
+    "security": {
+      "authChecks": [
+        "Firebase Auth verifyIdToken()"
+      ],
+      "checks": [
+        "npx gitleaks detect --source . -v",
+        "npm audit --audit-level=high"
+      ]
+    },
+    "testing": {
+      "minLineCoverage": 90,
+      "checks": [
+        "npx vitest --coverage"
+      ],
+      "minBranchCoverage": 85
+    },
+    "accessibility": {
+      "applicable": false,
+      "checks": []
+    },
+    "googleServices": {
+      "applicable": true,
+      "services": [
+        "Firebase Authentication"
+      ],
+      "checks": [
+        "verify auth middleware on route"
+      ]
+    },
+    "evaluationThreshold": "98%",
+    "efficiency": {
+      "checks": [
+        "npx size-limit"
+      ]
+    }
+  }
+}

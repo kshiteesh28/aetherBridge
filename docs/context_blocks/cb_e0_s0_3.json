@@ -1,0 +1,331 @@
+{
+  "$schema": "context-block-v1",
+  "blockId": "CB-E0-S0.3",
+  "title": "Shared Error Classes + Zod Validation Schemas",
+  "description": "Creates the AppError hierarchy and Zod schemas for input validation at API boundaries.",
+  "version": "1.0.0",
+  "generatedAt": "2026-03-28T11:54:54+05:30",
+  "status": "ready",
+  "traceability": {
+    "srdRequirements": [
+      {
+        "id": "NFR-SEC-001",
+        "title": "Input Validation",
+        "section": "§5.3",
+        "description": "All inputs must be validated"
+      }
+    ],
+    "epic": {
+      "id": "E0",
+      "title": "Project Foundation"
+    },
+    "story": {
+      "id": "S0.3",
+      "title": "Shared Error Classes + Zod Validation Schemas",
+      "size": "S",
+      "points": 3,
+      "userStory": "As a developer, I want typed error classes and Zod input schemas, so that all API inputs are validated and errors are consistent."
+    },
+    "designReferences": {
+      "hld": [],
+      "lld": [
+        "§7 — Error Handling"
+      ]
+    }
+  },
+  "techStack": {
+    "runtime": {
+      "language": "TypeScript",
+      "version": "5.x",
+      "runtime": "Node.js 20+"
+    },
+    "testing": {
+      "framework": "Vitest",
+      "version": "1.x"
+    },
+    "additionalLibraries": [
+      {
+        "name": "zod",
+        "version": "3.x",
+        "purpose": "Runtime input validation and type inference"
+      }
+    ]
+  },
+  "fileManifest": {
+    "create": [
+      {
+        "path": "src/shared/errors.ts",
+        "type": "source",
+        "layer": "utility",
+        "description": "AppError base class + specific error subclasses"
+      },
+      {
+        "path": "src/shared/schemas.ts",
+        "type": "source",
+        "layer": "utility",
+        "description": "Zod schemas for IntakeMetadata, ActionPackPayload"
+      },
+      {
+        "path": "src/shared/__tests__/errors.test.ts",
+        "type": "test",
+        "layer": "utility",
+        "description": "Error class tests"
+      },
+      {
+        "path": "src/shared/__tests__/schemas.test.ts",
+        "type": "test",
+        "layer": "utility",
+        "description": "Zod schema validation tests"
+      }
+    ],
+    "modify": [],
+    "dependencies": []
+  },
+  "typeDefinitions": {
+    "interfaces": [
+      {
+        "name": "AppError",
+        "description": "Base error class with statusCode and code",
+        "properties": [
+          {
+            "name": "statusCode",
+            "type": "number"
+          },
+          {
+            "name": "code",
+            "type": "string"
+          },
+          {
+            "name": "message",
+            "type": "string"
+          }
+        ]
+      }
+    ],
+    "enums": [
+      {
+        "name": "MediaType",
+        "values": [
+          "audio",
+          "video",
+          "photo"
+        ],
+        "description": "Supported media types for intake"
+      }
+    ]
+  },
+  "errorHandling": {
+    "errorTypes": [
+      {
+        "class": "ValidationError",
+        "httpStatus": 400,
+        "code": "VALIDATION_ERROR",
+        "when": "Zod parse failure"
+      },
+      {
+        "class": "NotFoundError",
+        "httpStatus": 404,
+        "code": "NOT_FOUND",
+        "when": "Resource does not exist"
+      },
+      {
+        "class": "AIProcessingError",
+        "httpStatus": 502,
+        "code": "AI_PROCESSING_ERROR",
+        "when": "Gemini timeout or refusal"
+      },
+      {
+        "class": "ConcurrencyError",
+        "httpStatus": 409,
+        "code": "CONCURRENCY_ERROR",
+        "when": "Optimistic lock conflict"
+      },
+      {
+        "class": "ConnectivityError",
+        "httpStatus": 503,
+        "code": "CONNECTIVITY_ERROR",
+        "when": "GCS or DB unreachable"
+      }
+    ]
+  },
+  "validationRules": {
+    "IntakeMetadataSchema": [
+      {
+        "field": "type",
+        "rules": [
+          "required",
+          "must be one of: audio, video, photo"
+        ]
+      },
+      {
+        "field": "context",
+        "rules": [
+          "optional",
+          "string",
+          "max 500 chars"
+        ]
+      }
+    ],
+    "ActionPackPayloadSchema": [
+      {
+        "field": "intent",
+        "rules": [
+          "required",
+          "string"
+        ]
+      },
+      {
+        "field": "entities",
+        "rules": [
+          "required",
+          "object"
+        ]
+      },
+      {
+        "field": "confidence",
+        "rules": [
+          "required",
+          "number",
+          "min 0",
+          "max 1"
+        ]
+      }
+    ]
+  },
+  "testSpecifications": {
+    "unitTests": [
+      {
+        "suite": "Error Classes",
+        "file": "src/shared/__tests__/errors.test.ts",
+        "cases": [
+          {
+            "name": "should create ValidationError with status 400",
+            "type": "happy-path",
+            "arrange": "new ValidationError('msg')",
+            "act": "Inspect properties",
+            "assert": [
+              "statusCode is 400",
+              "instanceof AppError"
+            ]
+          },
+          {
+            "name": "should create AIProcessingError with status 502",
+            "type": "happy-path",
+            "arrange": "new AIProcessingError('msg')",
+            "act": "Inspect properties",
+            "assert": [
+              "statusCode is 502",
+              "code is AI_PROCESSING_ERROR"
+            ]
+          }
+        ]
+      },
+      {
+        "suite": "Zod Schemas",
+        "file": "src/shared/__tests__/schemas.test.ts",
+        "cases": [
+          {
+            "name": "should validate correct intake metadata",
+            "type": "happy-path",
+            "arrange": "{ type: 'audio', context: 'test' }",
+            "act": "safeParse",
+            "assert": [
+              "success is true"
+            ]
+          },
+          {
+            "name": "should reject invalid media type",
+            "type": "error",
+            "arrange": "{ type: 'hologram' }",
+            "act": "safeParse",
+            "assert": [
+              "success is false"
+            ]
+          },
+          {
+            "name": "should allow optional context field",
+            "type": "edge-case",
+            "arrange": "{ type: 'photo' }",
+            "act": "safeParse",
+            "assert": [
+              "success is true"
+            ]
+          }
+        ]
+      }
+    ],
+    "integrationTests": [],
+    "testData": {
+      "fixtures": []
+    }
+  },
+  "blockDependencies": {
+    "dependsOn": [
+      {
+        "blockId": "CB-E0-S0.1",
+        "title": "Project Scaffold",
+        "provides": [
+          "TypeScript config",
+          "Vitest config"
+        ]
+      }
+    ],
+    "requiredBy": [
+      {
+        "blockId": "CB-E1-S1.1",
+        "title": "Intake Service",
+        "consumes": [
+          "ValidationError",
+          "IntakeMetadataSchema"
+        ]
+      },
+      {
+        "blockId": "CB-E1-S1.2",
+        "title": "POST /intake Endpoint",
+        "consumes": [
+          "Zod schemas",
+          "error classes"
+        ]
+      }
+    ]
+  },
+  "qualityGates": {
+    "codeQuality": {
+      "maxCyclomaticComplexity": 5,
+      "noAnyTypes": true,
+      "checks": [
+        "npx tsc --noEmit",
+        "npx madge --circular .",
+        "npx eslint . --max-warnings 0"
+      ]
+    },
+    "security": {
+      "inputValidation": "Zod schemas enforce strict types",
+      "checks": [
+        "npx gitleaks detect --source . -v",
+        "npm audit --audit-level=high"
+      ]
+    },
+    "efficiency": {
+      "checks": [
+        "npx size-limit"
+      ]
+    },
+    "testing": {
+      "minLineCoverage": 95,
+      "checks": [
+        "npx vitest --coverage"
+      ],
+      "minBranchCoverage": 85
+    },
+    "accessibility": {
+      "applicable": false,
+      "checks": []
+    },
+    "googleServices": {
+      "applicable": false,
+      "services": []
+    },
+    "evaluationThreshold": "98%"
+  }
+}

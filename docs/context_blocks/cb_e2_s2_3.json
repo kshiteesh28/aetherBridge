@@ -1,0 +1,230 @@
+{
+  "$schema": "context-block-v1",
+  "blockId": "CB-E2-S2.3",
+  "title": "Action Pack Builder",
+  "description": "Utility class that transforms raw Gemini extraction results into a standardized Action Pack JSON object. Applies confidence thresholds to determine verification status.",
+  "version": "1.0.0",
+  "generatedAt": "2026-03-28T11:54:54+05:30",
+  "status": "ready",
+  "traceability": {
+    "srdRequirements": [
+      {
+        "id": "FR-AR-001",
+        "title": "JSON Action Pack Generation",
+        "section": "§4.4",
+        "description": "Output standardized Action Packs for third-party consumption"
+      }
+    ],
+    "epic": {
+      "id": "E2",
+      "title": "Gemini Reasoning + Action Pack"
+    },
+    "story": {
+      "id": "S2.3",
+      "title": "Action Pack Builder (JSON Output)",
+      "size": "S",
+      "points": 3,
+      "userStory": "As the Action Relay module, I want to receive a standardized Action Pack JSON object, so that it can be forwarded to any legacy system without transformation."
+    },
+    "designReferences": {
+      "lld": [
+        "§4.2 — Action Pack Example JSON"
+      ]
+    }
+  },
+  "fileManifest": {
+    "create": [
+      {
+        "path": "src/domains/reasoning/action-pack.builder.ts",
+        "type": "source",
+        "layer": "utility",
+        "description": "ActionPackBuilder with static build() method"
+      },
+      {
+        "path": "src/domains/reasoning/__tests__/action-pack.builder.test.ts",
+        "type": "test",
+        "layer": "utility",
+        "description": "Action pack builder tests"
+      }
+    ]
+  },
+  "typeDefinitions": {
+    "interfaces": [
+      {
+        "name": "ActionPackOutput",
+        "description": "Standardized Action Pack for relay consumption",
+        "properties": [
+          {
+            "name": "event_id",
+            "type": "string"
+          },
+          {
+            "name": "intent",
+            "type": "string"
+          },
+          {
+            "name": "entities",
+            "type": "Record<string, any>"
+          },
+          {
+            "name": "verification",
+            "type": "{ status: 'VERIFIED' | 'REQUIRES_REVIEW', ground_truth_source: string | null }"
+          }
+        ]
+      }
+    ]
+  },
+  "businessRules": [
+    {
+      "id": "BR-PACK-001",
+      "rule": "Confidence >= 0.85 results in verification.status = VERIFIED",
+      "enforcement": "ActionPackBuilder.build() threshold check",
+      "errorOnViolation": null
+    },
+    {
+      "id": "BR-PACK-002",
+      "rule": "Confidence < 0.85 results in verification.status = REQUIRES_REVIEW",
+      "enforcement": "ActionPackBuilder.build() threshold check",
+      "errorOnViolation": null
+    },
+    {
+      "id": "BR-PACK-003",
+      "rule": "Intent field is mandatory in Gemini output. Missing intent throws error.",
+      "enforcement": "Validation inside build()",
+      "errorOnViolation": {
+        "code": "VALIDATION_ERROR",
+        "status": 400
+      }
+    }
+  ],
+  "testSpecifications": {
+    "unitTests": [
+      {
+        "suite": "ActionPackBuilder",
+        "file": "src/domains/reasoning/__tests__/action-pack.builder.test.ts",
+        "cases": [
+          {
+            "name": "should build a valid Action Pack JSON from raw Gemini output",
+            "type": "happy-path",
+            "arrange": "{ intent: 'MEDICAL_TRIAGE', entities: { patient_name: 'Jane Doe' }, confidence: 0.98 }",
+            "act": "ActionPackBuilder.build('evt-001', raw)",
+            "assert": [
+              "event_id is evt-001",
+              "intent is MEDICAL_TRIAGE",
+              "verification.status is VERIFIED"
+            ]
+          },
+          {
+            "name": "should flag low-confidence packs as REQUIRES_REVIEW",
+            "type": "edge-case",
+            "arrange": "{ intent: 'UNKNOWN', entities: {}, confidence: 0.4 }",
+            "act": "ActionPackBuilder.build('evt-002', raw)",
+            "assert": [
+              "verification.status is REQUIRES_REVIEW"
+            ]
+          },
+          {
+            "name": "should throw if intent is missing from Gemini output",
+            "type": "error",
+            "arrange": "{ entities: {}, confidence: 0.5 }",
+            "act": "ActionPackBuilder.build('evt-003', raw)",
+            "assert": [
+              "Throws error with message 'Intent is required'"
+            ]
+          }
+        ]
+      }
+    ],
+    "testData": {
+      "fixtures": [
+        {
+          "name": "highConfidence",
+          "data": {
+            "intent": "MEDICAL_TRIAGE",
+            "entities": {
+              "patient_name": "Jane Doe",
+              "allergies": [
+                "Penicillin"
+              ]
+            },
+            "confidence": 0.98
+          }
+        },
+        {
+          "name": "lowConfidence",
+          "data": {
+            "intent": "UNKNOWN",
+            "entities": {},
+            "confidence": 0.4
+          }
+        },
+        {
+          "name": "missingIntent",
+          "data": {
+            "entities": {},
+            "confidence": 0.5
+          }
+        }
+      ]
+    }
+  },
+  "blockDependencies": {
+    "dependsOn": [
+      {
+        "blockId": "CB-E2-S2.2",
+        "title": "Reasoning Service",
+        "provides": [
+          "GeminiExtractionResult type"
+        ]
+      }
+    ],
+    "requiredBy": [
+      {
+        "blockId": "CB-E2-S2.4",
+        "title": "Integration Test",
+        "consumes": [
+          "ActionPackBuilder.build()"
+        ]
+      }
+    ]
+  },
+  "qualityGates": {
+    "codeQuality": {
+      "noAnyTypes": true,
+      "maxFunctionLength": 30,
+      "checks": [
+        "npx tsc --noEmit",
+        "npx madge --circular .",
+        "npx eslint . --max-warnings 0"
+      ]
+    },
+    "security": {
+      "checks": [
+        "npx gitleaks detect --source . -v",
+        "npm audit --audit-level=high"
+      ]
+    },
+    "efficiency": {
+      "checks": [
+        "npx size-limit"
+      ]
+    },
+    "testing": {
+      "minLineCoverage": 95,
+      "checks": [
+        "npx vitest --coverage"
+      ],
+      "minBranchCoverage": 85
+    },
+    "accessibility": {
+      "applicable": false,
+      "checks": []
+    },
+    "googleServices": {
+      "applicable": false,
+      "services": [],
+      "notes": "Pure utility — no direct Google service calls. Consumes output from Vertex AI adapter."
+    },
+    "evaluationThreshold": "98%"
+  }
+}

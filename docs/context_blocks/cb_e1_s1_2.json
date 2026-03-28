@@ -1,0 +1,262 @@
+{
+  "$schema": "context-block-v1",
+  "blockId": "CB-E1-S1.2",
+  "title": "POST /api/v1/intake Endpoint",
+  "description": "Express controller for multi-modal file uploads. Uses Multer for multipart parsing, Zod for metadata validation, and Firebase Auth for authentication. Returns 202 Accepted with event_id.",
+  "version": "1.0.0",
+  "generatedAt": "2026-03-28T11:54:54+05:30",
+  "status": "ready",
+  "traceability": {
+    "srdRequirements": [
+      {
+        "id": "US-MMI-001",
+        "title": "Photo Intake",
+        "section": "§4.1"
+      },
+      {
+        "id": "US-MMI-002",
+        "title": "Voice Intake",
+        "section": "§4.1"
+      }
+    ],
+    "epic": {
+      "id": "E1",
+      "title": "Multi-Modal Intake Pipeline"
+    },
+    "story": {
+      "id": "S1.2",
+      "title": "POST /api/v1/intake Endpoint",
+      "size": "M",
+      "points": 5,
+      "userStory": "As a frontend client, I want to POST media to /api/v1/intake, so that I receive a tracking event_id with a 202 Accepted status."
+    },
+    "designReferences": {
+      "hld": [
+        "§2.3 — Container Diagram"
+      ],
+      "lld": [
+        "§4.1 — POST /intake"
+      ]
+    }
+  },
+  "techStack": {
+    "runtime": {
+      "language": "TypeScript",
+      "version": "5.x"
+    },
+    "additionalLibraries": [
+      {
+        "name": "multer",
+        "version": "1.x",
+        "purpose": "Multipart file upload parsing"
+      },
+      {
+        "name": "firebase-admin",
+        "version": "12.x",
+        "purpose": "Firebase Auth token verification middleware"
+      }
+    ]
+  },
+  "fileManifest": {
+    "create": [
+      {
+        "path": "src/api/routes/intake.ts",
+        "type": "source",
+        "layer": "controller",
+        "description": "POST /api/v1/intake route handler"
+      },
+      {
+        "path": "src/api/middleware/errorHandler.ts",
+        "type": "source",
+        "layer": "middleware",
+        "description": "Global error handler mapping AppError to JSON responses"
+      },
+      {
+        "path": "src/api/__tests__/intake.controller.test.ts",
+        "type": "test",
+        "layer": "controller",
+        "description": "Intake endpoint tests"
+      }
+    ],
+    "modify": [
+      {
+        "path": "src/app.ts",
+        "description": "Register intake routes and error handler middleware",
+        "changeType": "append"
+      }
+    ],
+    "dependencies": [
+      {
+        "path": "src/domains/intake/intake.service.ts",
+        "mustExist": true,
+        "provides": "IntakeService.processUpload()"
+      },
+      {
+        "path": "src/shared/schemas.ts",
+        "mustExist": true,
+        "provides": "IntakeMetadataSchema"
+      }
+    ]
+  },
+  "apiContracts": [
+    {
+      "method": "POST",
+      "path": "/api/v1/intake",
+      "description": "Upload media file for multi-modal processing",
+      "auth": {
+        "required": true,
+        "provider": "Firebase Auth",
+        "method": "Bearer JWT in Authorization header"
+      },
+      "rateLimit": "30/min",
+      "request": {
+        "contentType": "multipart/form-data",
+        "fields": {
+          "media": {
+            "type": "file",
+            "required": true,
+            "description": "Audio/video/image file"
+          },
+          "metadata": {
+            "type": "JSON string",
+            "required": true,
+            "schema": "IntakeMetadataSchema"
+          }
+        }
+      },
+      "responses": {
+        "202": {
+          "description": "Accepted for processing",
+          "body": {
+            "event_id": "string (uuid)",
+            "status": "PROCESSING",
+            "tracking_url": "string"
+          }
+        },
+        "400": {
+          "code": "VALIDATION_ERROR",
+          "description": "Missing file or invalid metadata"
+        },
+        "401": {
+          "code": "UNAUTHORIZED",
+          "description": "Missing or invalid Firebase Auth token"
+        }
+      }
+    }
+  ],
+  "testSpecifications": {
+    "unitTests": [
+      {
+        "suite": "POST /api/v1/intake",
+        "file": "src/api/__tests__/intake.controller.test.ts",
+        "cases": [
+          {
+            "name": "should return 202 with event_id for valid upload",
+            "type": "happy-path",
+            "arrange": "Attach valid audio file + valid metadata JSON",
+            "act": "POST /api/v1/intake",
+            "assert": [
+              "Status 202",
+              "Body has event_id",
+              "Body has status PROCESSING"
+            ]
+          },
+          {
+            "name": "should return 400 if no media file is attached",
+            "type": "error",
+            "arrange": "Send only metadata field",
+            "act": "POST /api/v1/intake",
+            "assert": [
+              "Status 400",
+              "Error code VALIDATION_ERROR"
+            ]
+          },
+          {
+            "name": "should return 400 if metadata has invalid type",
+            "type": "error",
+            "arrange": "Attach file + metadata { type: 'hologram' }",
+            "act": "POST /api/v1/intake",
+            "assert": [
+              "Status 400"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "blockDependencies": {
+    "dependsOn": [
+      {
+        "blockId": "CB-E1-S1.1",
+        "title": "Intake Service",
+        "provides": [
+          "IntakeService.processUpload()"
+        ]
+      }
+    ],
+    "requiredBy": [
+      {
+        "blockId": "CB-E1-S1.3",
+        "title": "GET /event/:id Endpoint",
+        "consumes": [
+          "Registered intake routes"
+        ]
+      },
+      {
+        "blockId": "CB-E2-S2.4",
+        "title": "Integration Test",
+        "consumes": [
+          "POST /intake endpoint"
+        ]
+      }
+    ]
+  },
+  "qualityGates": {
+    "codeQuality": {
+      "maxCyclomaticComplexity": 10,
+      "noAnyTypes": true,
+      "checks": [
+        "npx tsc --noEmit",
+        "npx madge --circular .",
+        "npx eslint . --max-warnings 0"
+      ]
+    },
+    "security": {
+      "inputValidation": "Zod + Multer file type filter",
+      "authChecks": [
+        "Firebase Auth verifyIdToken()"
+      ],
+      "checks": [
+        "verify auth middleware on route",
+        "npx gitleaks detect --source . -v",
+        "npm audit --audit-level=high"
+      ]
+    },
+    "efficiency": {
+      "checks": [
+        "npx size-limit"
+      ]
+    },
+    "testing": {
+      "minLineCoverage": 90,
+      "checks": [
+        "npx vitest --coverage"
+      ],
+      "minBranchCoverage": 85
+    },
+    "accessibility": {
+      "applicable": false,
+      "checks": []
+    },
+    "googleServices": {
+      "applicable": true,
+      "services": [
+        "Firebase Authentication"
+      ],
+      "checks": [
+        "verify firebase-admin verifyIdToken middleware"
+      ]
+    },
+    "evaluationThreshold": "98%"
+  }
+}
