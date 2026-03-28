@@ -1,7 +1,7 @@
 {
   "name": "hackathon-warm-up-challenge",
   "version": "1.0.0",
-  "description": "",
+  "description": "AetherBridge: A Gemini-powered application that converts unstructured real-world inputs into structured, life-saving actions using Vertex AI and Google Cloud.",
   "main": "index.js",
   "directories": {
     "doc": "docs"
